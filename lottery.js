@@ -11,27 +11,28 @@ var lotterySchema = new Schema({
 
 var lottery = mongoose.model('lottery', lotterySchema);
 
-function launchLottery(username){
+function launchLottery(username, callback){
     var ret;
     lottery.findOne({'isActive': true}, function(err, result){
       if (err) {console.log(err)}
       if (result){
         console.log(result);
-        ret = "There is already a lottery ongoing please finish it before anything else";
+         callback("There is already a lottery ongoing please finish it before anything else");
       }
       else {
         var newLottery = new lottery();
-        newLottery.save();
+        newLottery.save()
         console.log("new lottery");
         ret = {
-          response_type: 'in_channel',
-          text: "@channel La lotterie commence tapez `!lottery` pour vous inscrire (no spam please) !!"
-        };
+           response_type: 'in_channel',
+           text: ":404: La loterie commence tapez `/lottery` pour vous inscrire (no spam please) !! :404:"
+        }
+        callback(ret);
       }
     });
 }
 
-function submitLottery(username){
+function submitLottery(username, callback){
   var newSub = {body: username};
   var signedIn = false;
   var ret;
@@ -41,7 +42,7 @@ function submitLottery(username){
       result.subscriber.forEach(function(sub){
         if (sub.body == username)
         {
-          ret = "Tu es deja inscris !";
+          ret = ":404: Tu es deja inscris " + username + "! :404:";
           signedIn = true;
         }
       });
@@ -49,58 +50,72 @@ function submitLottery(username){
         {
           result.subscriber.addToSet(newSub);
           result.save();
-          ret = "Tu es bien inscris a la lotterie !";
+          ret = ":404: Tu es bien inscris a la loterie " + username + "! :404:";
         }
       console.log(result);
       }
     else {
-      ret = "Aucune lotterie en cours !";
+      ret = ":404: Aucune loterie en cours ! :404:";
     }
+    callback(ret);
   });
-  return ret;
 }
 
-function stopLottery(query, username){
-  var ret;
+function stopLottery(query, callback){
+   var ret;
    var nb = parseInt(query, 10);
    var winners = [];
    var announceWinner = ":404: The winners are ";
-   if (nb === 1)
-    announceWinner = ":404: The winner is ";
-   lottery.findOne({'isActive': true}, function(err, result){
-      if (err){console.log(err)}
-      else{
-          console.log("Stopping the lottery and rambling for winner");
-          for(var i=1; i <= nb; i++)
-          {
+
+  lottery.findOne({'isActive': true}, function(err, result){
+    if (err){console.log(err)}
+    else {
+      console.log("Stopping the lottery and rambling for winner");
+      if (nb !== NaN)
+      {
+        if (nb === 1 || result.subscriber.length === 1)
+         announceWinner = ":404: The winner is ";
+        for(var i=1; i <= nb && i <= result.subscriber.length; i++)
+        {
+          var tmp = result.subscriber[Math.floor(Math.random() * result.subscriber.length)];
+          while (winners.indexOf(tmp) > -1)
             var tmp = result.subscriber[Math.floor(Math.random() * result.subscriber.length)];
-            while (winners.indexOf(tmp) > -1)
-              var tmp = result.subscriber[Math.floor(Math.random() * result.subscriber.length)];
-            announceWinner += tmp.body +" ";
-            winners.push(tmp);
-            result.winner.addToSet(tmp);
-          }
-          result.isActive = false;
-          result.save();
-          announceWinner += "! BRAVO :404:";
-          console.log(result);
-          if (nb > 0)
-          {
-            console.log(announceWinner);
-            ret = {
-              response_type: 'in_channel',
-              text: announceWinner
-            };
-          }
-          else
-            ret = "0 winner";
+          announceWinner += tmp.body +" ";
+          winners.push(tmp);
+          result.winner.addToSet(tmp);
+        }
       }
+      result.isActive = false;
+      result.save();
+      announceWinner += "! BRAVO :404:";
+      console.log(result);
+      if (nb !== NaN && nb > 0 && result.subscriber.length > 0)
+      {
+        console.log(announceWinner);
+        ret = {
+          response_type: 'in_channel',
+          text: announceWinner
+        };
+      }
+      else
+        ret = "0 winner";
+    }
+    callback(ret);
    });
-   return ret;
+}
+
+function countSub(callback){
+  lottery.findOne({'isActive': true}, function(err, result){
+    if (err){console.log(err)}
+    else {
+      callback(result.subscriber.length + " inscris");
+    }
+  });
 }
 
 module.exports = {
   launchLottery: launchLottery ,
   stopLottery: stopLottery ,
-  submitLottery: submitLottery
+  submitLottery: submitLottery,
+  countSub : countSub
 };
