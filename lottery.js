@@ -1,7 +1,7 @@
 var mongoose  = require("mongoose");
 var Schema    = mongoose.Schema;
 
-mongoose.connect('mongodb://localhost/test');
+mongoose.connect('mongodb://localhost/bdecrew');
 var lotterySchema = new Schema({
   isActive: {type: Boolean, default: true},
   date: { type: Date, default: Date.now },
@@ -25,7 +25,7 @@ function launchLottery(username, callback){
         console.log("new lottery");
         ret = {
            response_type: 'in_channel',
-           text: ":404: La loterie commence tapez `/lottery` pour vous inscrire (no spam please) !! :404:"
+           text: ":404: La loterie commence tapez `/lottery` pour vous inscrire!! :404:"
         }
         callback(ret);
       }
@@ -62,14 +62,17 @@ function submitLottery(username, callback){
 }
 
 function stopLottery(query, callback){
-   var ret;
+   var ret = {
+     response_type: 'in_channel',
+     text: "lottery stopped"
+   };
    var nb = parseInt(query, 10);
    var winners = [];
    var announceWinner = ":404: The winners are ";
 
   lottery.findOne({'isActive': true}, function(err, result){
     if (err){console.log(err)}
-    else {
+    if (result) {
       console.log("Stopping the lottery and rambling for winner");
       if (nb !== NaN)
       {
@@ -97,8 +100,6 @@ function stopLottery(query, callback){
           text: announceWinner
         };
       }
-      else
-        ret = "0 winner";
     }
     callback(ret);
    });
@@ -107,8 +108,10 @@ function stopLottery(query, callback){
 function countSub(callback){
   lottery.findOne({'isActive': true}, function(err, result){
     if (err){console.log(err)}
-    else {
+    if (result)
       callback(result.subscriber.length + " inscris");
+    else {
+      callback("no lottery going on");
     }
   });
 }
